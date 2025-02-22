@@ -1,0 +1,1 @@
+/usr/bin/cc -Wl,--dependency-file=CMakeFiles/Simulator.dir/link.d CMakeFiles/Simulator.dir/src/simulator.c.o -o /home/girish/git/dsa-queue-simulator/bin/Simulator  -lSDL2
