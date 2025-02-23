@@ -1,8 +1,0 @@
-/home/girish/git/dsa-queue-simulator/build/CMakeFiles/edit_cache.dir
-/home/girish/git/dsa-queue-simulator/build/CMakeFiles/rebuild_cache.dir
-/home/girish/git/dsa-queue-simulator/build/generator/CMakeFiles/Generator.dir
-/home/girish/git/dsa-queue-simulator/build/generator/CMakeFiles/edit_cache.dir
-/home/girish/git/dsa-queue-simulator/build/generator/CMakeFiles/rebuild_cache.dir
-/home/girish/git/dsa-queue-simulator/build/simulator/CMakeFiles/Simulator.dir
-/home/girish/git/dsa-queue-simulator/build/simulator/CMakeFiles/edit_cache.dir
-/home/girish/git/dsa-queue-simulator/build/simulator/CMakeFiles/rebuild_cache.dir

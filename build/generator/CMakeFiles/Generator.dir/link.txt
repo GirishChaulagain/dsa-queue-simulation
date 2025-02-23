@@ -1,1 +1,0 @@
-/usr/bin/cc -Wl,--dependency-file=CMakeFiles/Generator.dir/link.d CMakeFiles/Generator.dir/src/traffic_generator.c.o -o /home/girish/git/dsa-queue-simulator/bin/Generator
