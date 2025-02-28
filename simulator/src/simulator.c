@@ -6,11 +6,15 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <SDL2/SDL.h>
+#include <stdbool.h>
 
 #define PORT 8080
 
 const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 600;
+
+static int northSouthGreen = 0; // initial state
+static int eastWestGreen = 1;
 
 typedef struct{
     SDL_Rect rect;
@@ -269,6 +273,50 @@ void moveVehicle(Vehicle *vehicle) {
             return;
         }
     }
+  /* Vehicles Stopping Logic */
+  int shouldStop = 0;  
+  int stopX = vehicle->rect.x;  
+  int stopY = vehicle->rect.y;  
+
+  //For lane 2 only 
+  if(vehicle->lane == 2 ){
+    if(vehicle->road_id == 'A' && northSouthGreen){
+      stopY = 150 - 20;
+      if(vehicle->rect.y >= stopY){
+        shouldStop = 1;
+      }
+    }
+
+    if(vehicle->road_id == 'B' && northSouthGreen ){
+      stopY=450;
+      if(vehicle->rect.y <= stopY){
+        shouldStop = 1; 
+      }
+    }
+
+    if(vehicle->road_id == 'D' && eastWestGreen){
+      stopX=150-20; 
+      if(vehicle->rect.x >= stopX){
+        shouldStop = 1;
+      }
+    }
+
+    if(vehicle->road_id == 'C' && eastWestGreen){
+      stopX= 450; 
+      if(vehicle->rect.x <= stopX){
+        shouldStop = 1;
+      }
+    }
+  }
+
+  if(shouldStop){
+    vehicle->rect.x = stopX; 
+    vehicle->rect.y = stopY; 
+    printf("Vehicle %d stopped at (%d, %d) due to red light\n", 
+            vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y);
+        return;
+
+  }
 
     int reachedX = (abs(vehicle->rect.x - targetX) <= vehicle->speed);
     int reachedY = (abs(vehicle->rect.y - targetY) <= vehicle->speed);
@@ -279,7 +327,7 @@ void moveVehicle(Vehicle *vehicle) {
         // Move Y first
         if (!reachedY) {
             vehicle->rect.y += (vehicle->rect.y < targetY) ? vehicle->speed : -vehicle->speed;
-       } else if (!reachedX) {
+        } else if (!reachedX) {
             vehicle->rect.x += (vehicle->rect.x < targetX) ? vehicle->speed : -vehicle->speed;
         }
     } else {
@@ -295,10 +343,87 @@ void moveVehicle(Vehicle *vehicle) {
     if (reachedX) vehicle->rect.x = targetX;
     if (reachedY) vehicle->rect.y = targetY;
 
+    if (reachedX && reachedY) {
+        vehicle->road_id = vehicle->targetRoad;
+        vehicle->lane = vehicle->targetLane;
+    }
     // Debugging Output
     printf("Vehicle %d Position: (%d, %d) Target: (%d, %d)\n", 
             vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y, targetX, targetY);
 }
+
+/*void moveVehicle(Vehicle *vehicle, int northSouthGreen, int eastWestGreen) {*/
+/*    int targetX, targetY;*/
+/*    getLaneCenter(vehicle->targetRoad, vehicle->targetLane, &targetX, &targetY);*/
+/**/
+/*    int reachedX = (abs(vehicle->rect.x - targetX) <= vehicle->speed);*/
+/*    int reachedY = (abs(vehicle->rect.y - targetY) <= vehicle->speed);*/
+/**/
+/*    // Ensure Lane 1 & 3 Vehicles Are Always Moving*/
+/*    if (vehicle->lane == 1 || vehicle->lane == 3) {*/
+/*        goto MOVE_VEHICLE;  // Skip stop checks for Lane 1 & 3*/
+/*    }*/
+/**/
+/*    // Lane 2 Stop Logic*/
+/*    int northSouthStopY = 225; // Adjusted stop position for north-south*/
+/*    int eastWestStopX = 225;   // Adjusted stop position for east-west*/
+/**/
+/*    bool shouldStop = false;*/
+/**/
+/*    if (vehicle->lane == 2) {*/
+/*        if (vehicle->road_id == 'A' && !northSouthGreen) {  // North to South*/
+/*            if (vehicle->rect.y < northSouthStopY && vehicle->rect.y + vehicle->speed >= northSouthStopY) {*/
+/*                vehicle->rect.y = northSouthStopY;  */
+/*                shouldStop = true;*/
+/*            }*/
+/*        }*/
+/*        if (vehicle->road_id == 'B' && !northSouthGreen) {  // South to North*/
+/*            if (vehicle->rect.y > northSouthStopY && vehicle->rect.y - vehicle->speed <= northSouthStopY) {*/
+/*                vehicle->rect.y = northSouthStopY;  */
+/*                shouldStop = true;*/
+/*            }*/
+/*        }*/
+/*        if (vehicle->road_id == 'C' && !eastWestGreen) {  // East to West*/
+/*            if (vehicle->rect.x > eastWestStopX && vehicle->rect.x - vehicle->speed <= eastWestStopX) {*/
+/*                vehicle->rect.x = eastWestStopX;*/
+/*                shouldStop = true;*/
+/*            }*/
+/*        }*/
+/*        if (vehicle->road_id == 'D' && !eastWestGreen) {  // West to East*/
+/*            if (vehicle->rect.x < eastWestStopX && vehicle->rect.x + vehicle->speed >= eastWestStopX) {*/
+/*                vehicle->rect.x = eastWestStopX;*/
+/*                shouldStop = true;*/
+/*            }*/
+/*        }*/
+/*    }*/
+/**/
+/*    // If stopped, do not move further*/
+/*    if (shouldStop) return;*/
+/**/
+/*MOVE_VEHICLE:*/
+/*    // Movement logic for all vehicles*/
+/*    if (!reachedX || !reachedY) {*/
+/*        int deltaX = (vehicle->rect.x < targetX) ? vehicle->speed : -vehicle->speed;*/
+/*        int deltaY = (vehicle->rect.y < targetY) ? vehicle->speed : -vehicle->speed;*/
+/**/
+/*        if ((vehicle->road_id == 'A' && vehicle->targetRoad == 'C') || */
+/*            (vehicle->road_id == 'B' && vehicle->targetRoad == 'D')) {*/
+/*            if (!reachedY) vehicle->rect.y += deltaY;*/
+/*            else if (!reachedX) vehicle->rect.x += deltaX;*/
+/*        } else {*/
+/*            if (!reachedX) vehicle->rect.x += deltaX;*/
+/*            else if (!reachedY) vehicle->rect.y += deltaY;*/
+/*        }*/
+/*    }*/
+/**/
+/*    // Snap to target position*/
+/*    if (reachedX) vehicle->rect.x = targetX;*/
+/*    if (reachedY) vehicle->rect.y = targetY;*/
+/**/
+/*    // Debugging Output*/
+/*    printf("Vehicle %d Position: (%d, %d) Target: (%d, %d) Lane: %d\n", */
+/*            vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y, targetX, targetY, vehicle->lane);*/
+/*}*/
 
 int main() {
     // Socket related code commented out during the development of UI elements
@@ -326,72 +451,25 @@ Vehicle vehicle1 = {
     };
     getLaneCenter(vehicle1.road_id, vehicle1.lane, &vehicle1.rect.x, &vehicle1.rect.y);
 
-    Vehicle vehicle2 = {
-    {0, 0, 20, 20},  // Temporary values (updated below)
-    2, 'A', 3, 2,  // ID=2, starts at road 'A', lane 3
-    'C', 1                     // Target is road 'C', lane 1
-    };
-
-    // Set correct initial position (centered in A3)
+    Vehicle vehicle2 = {{0, 0, 20, 20}, 2, 'A', 3, 2, 'C', 1};
     getLaneCenter(vehicle2.road_id, vehicle2.lane, &vehicle2.rect.x, &vehicle2.rect.y);
 
-    Vehicle vehicle3 = {
-    {0, 0, 20, 20},  // Temporary position (updated below)
-    1, 'C', 3, 2,    // ID=1, starts at road 'D', lane 3, speed=3
-    'B', 1          // Target is road 'A', lane 1
-    };
+    Vehicle vehicle3 = {{0, 0, 20, 20}, 3, 'C', 3, 2, 'B', 1};
     getLaneCenter(vehicle3.road_id, vehicle3.lane, &vehicle3.rect.x, &vehicle3.rect.y);
 
-    Vehicle vehicle4 = {
-    {600, 600, 20, 20},  // Temporary values (updated below)
-    2, 'B', 3, 2,  // ID=2, starts at road 'A', lane 3
-    'D', 1                     // Target is road 'C', lane 1
-    };
+    Vehicle vehicle4 = {{0, 0, 20, 20}, 4, 'B', 3, 2, 'D', 1};
     getLaneCenter(vehicle4.road_id, vehicle4.lane, &vehicle4.rect.x, &vehicle4.rect.y);
 
-    Vehicle vehicle5= {
-        {0, 0, 20, 20},  // Dimensions and initial position (will be updated by getLaneCenter)
-        5,               // vehicle_id = 5
-        'D',             // Starting from road D (left side)
-        2,               // Using lane 2 (middle lane)
-        2,               // Speed
-        'C',             // Target road C (right side)
-        2                // Target lane 2 (middle lane)
-    };
+    Vehicle vehicle5 = {{0, 0, 20, 20}, 5, 'D', 2, 2, 'C', 2};
     getLaneCenter(vehicle5.road_id, vehicle5.lane, &vehicle5.rect.x, &vehicle5.rect.y);
 
-    Vehicle vehicle6= {
-        {0, 0, 20, 20},  // Dimensions and initial position (will be updated by getLaneCenter)
-        6,               // vehicle_id = 6
-        'C',             // Starting from road D (left side)
-        2,               // Using lane 2 (middle lane)
-        2,               // Speed
-        'D',             // Target road C (right side)
-        2                // Target lane 2 (middle lane)
-    };
+    Vehicle vehicle6 = {{0, 0, 20, 20}, 6, 'C', 2, 2, 'D', 2};
     getLaneCenter(vehicle6.road_id, vehicle6.lane, &vehicle6.rect.x, &vehicle6.rect.y);
 
-    Vehicle vehicle7= {
-        {0, 0, 20, 20},  // Dimensions and initial position (will be updated by getLaneCenter)
-        7,               // vehicle_id = 6
-        'A',             // Starting from road D (left side)
-        2,               // Using lane 2 (middle lane)
-        2,               // Speed
-        'B',             // Target road C (right side)
-        2                // Target lane 2 (middle lane)
-    };
+    Vehicle vehicle7 = {{0, 0, 20, 20}, 7, 'A', 2, 2, 'B', 2};
     getLaneCenter(vehicle7.road_id, vehicle7.lane, &vehicle7.rect.x, &vehicle7.rect.y);
 
-
-    Vehicle vehicle8= {
-        {0, 0, 20, 20},  // Dimensions and initial position (will be updated by getLaneCenter)
-        8,               // vehicle_id = 6
-        'B',             // Starting from road D (left side)
-        2,               // Using lane 2 (middle lane)
-        2,               // Speed
-        'A',             // Target road C (right side)
-        2                // Target lane 2 (middle lane)
-    };
+    Vehicle vehicle8 = {{0, 0, 20, 20}, 8, 'B', 2, 2, 'A', 2};
     getLaneCenter(vehicle8.road_id, vehicle8.lane, &vehicle8.rect.x, &vehicle8.rect.y);
 
     int running = 1;
@@ -413,7 +491,7 @@ Vehicle vehicle1 = {
 
         DrawBackground(renderer);
         
-        TrafficLightState(renderer, 0, 1);
+        TrafficLightState(renderer, northSouthGreen, eastWestGreen);
 
         drawVehicle(renderer, &vehicle1);
         drawVehicle(renderer, &vehicle2);
