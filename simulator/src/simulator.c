@@ -278,46 +278,54 @@ void moveVehicle(Vehicle *vehicle) {
   int stopX = vehicle->rect.x;  
   int stopY = vehicle->rect.y;  
 
+  //For lane 2 only  
+
   //For lane 2 only 
-  if(vehicle->lane == 2 ){
-    if(vehicle->road_id == 'A' && northSouthGreen){
+  if (vehicle->lane == 2) {
+    if (vehicle->road_id == 'A' && northSouthGreen) {
       stopY = 150 - 20;
-      if(vehicle->rect.y >= stopY){
+      if (vehicle->rect.y == stopY) {
         shouldStop = 1;
+      } else {
+        shouldStop =0;
       }
     }
 
-    if(vehicle->road_id == 'B' && northSouthGreen ){
-      stopY=450;
-      if(vehicle->rect.y <= stopY){
-        shouldStop = 1; 
+    if (vehicle->road_id == 'B' && northSouthGreen) {
+      stopY = 450;
+      if (vehicle->rect.y == stopY) {
+        shouldStop = 1;
+      }else{
+        shouldStop =0; 
       }
     }
 
-    if(vehicle->road_id == 'D' && eastWestGreen){
-      stopX=150-20; 
-      if(vehicle->rect.x >= stopX){
+    if (vehicle->road_id == 'D' && eastWestGreen) {
+      stopX = 150 - 20;
+      if (vehicle->rect.x == stopX) {
         shouldStop = 1;
+      }else{
+        shouldStop=0;
       }
     }
 
-    if(vehicle->road_id == 'C' && eastWestGreen){
-      stopX= 450; 
-      if(vehicle->rect.x <= stopX){
+    if (vehicle->road_id == 'C' && eastWestGreen) {
+      stopX = 450;
+      if (vehicle->rect.x == stopX) {
         shouldStop = 1;
+      }else{
+        shouldStop = 0;
       }
     }
   }
 
-  if(shouldStop){
-    vehicle->rect.x = stopX; 
-    vehicle->rect.y = stopY; 
-    printf("Vehicle %d stopped at (%d, %d) due to red light\n", 
-            vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y);
+    if (shouldStop) {
+        vehicle->rect.x = stopX;
+        vehicle->rect.y = stopY;
+        printf("Vehicle %d stopped at (%d, %d) due to red light\n",
+               vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y);
         return;
-
-  }
-
+    }
     int reachedX = (abs(vehicle->rect.x - targetX) <= vehicle->speed);
     int reachedY = (abs(vehicle->rect.y - targetY) <= vehicle->speed);
 
@@ -350,6 +358,18 @@ void moveVehicle(Vehicle *vehicle) {
     // Debugging Output
     printf("Vehicle %d Position: (%d, %d) Target: (%d, %d)\n", 
             vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y, targetX, targetY);
+}
+
+Uint32 lastSwitchTime = 0;
+
+void updateTrafficLights() {
+    Uint32 currentTime = SDL_GetTicks();
+    if (currentTime - lastSwitchTime > 8555) {
+        northSouthGreen = !northSouthGreen;
+        eastWestGreen = !eastWestGreen;
+        lastSwitchTime = currentTime;
+        printf("Traffic Light Changed! North-South: %d, East-West: %d\n", northSouthGreen, eastWestGreen);
+    }
 }
 
 int main() {
@@ -407,6 +427,9 @@ Vehicle vehicle1 = {
                 running = 0;
             }
         }
+
+        updateTrafficLights();
+
         moveVehicle(&vehicle1);
         moveVehicle(&vehicle2);
         moveVehicle(&vehicle3);
