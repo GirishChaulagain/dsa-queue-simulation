@@ -71,8 +71,9 @@ Vehicle* dequeue(VehicleQueue *q) {
 }
 
 void drawVehicle(SDL_Renderer *renderer, Vehicle *vehicle) {
-
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red vehicle
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    printf("Drawing vehicle %d at (%d, %d) with size (%d, %d)\n", 
+           vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y, vehicle->rect.w, vehicle->rect.h);
     SDL_RenderFillRect(renderer, &vehicle->rect);
 }
 
@@ -294,29 +295,29 @@ void moveVehicle(Vehicle *vehicle) {
     int targetX, targetY;
     getLaneCenter(vehicle->targetRoad, vehicle->targetLane, &targetX, &targetY);
 
-    if (vehicle->targetLane == 1) {
-        if (!((vehicle->road_id == 'D' && vehicle->lane == 3 && vehicle->targetRoad == 'A') ||
-              (vehicle->road_id == 'A' && vehicle->lane == 3 && vehicle->targetRoad == 'C') ||
-              (vehicle->road_id == 'C' && vehicle->lane == 3 && vehicle->targetRoad == 'B') ||
-              (vehicle->road_id == 'B' && vehicle->lane == 3 && vehicle->targetRoad == 'D'))) {
-            printf("Vehicle %d is not allowed to move to Lane 1! Stopping movement.\n", vehicle->vehicle_id);
-            return;
-        }
-    }
-
-    if (vehicle->targetLane == 2) {
-        if (!((vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'B') ||
-              (vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||
-              (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||
-              (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||
-              (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||
-              (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||
-              (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||
-              (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'B'))) {
-            printf("Vehicle %d is not allowed to move to Lane 2! Stopping movement.\n", vehicle->vehicle_id);
-            return;
-        }
-    }
+    /*if (vehicle->targetLane == 1) {*/
+    /*    if (!((vehicle->road_id == 'D' && vehicle->lane == 3 && vehicle->targetRoad == 'A') ||*/
+    /*          (vehicle->road_id == 'A' && vehicle->lane == 3 && vehicle->targetRoad == 'C') ||*/
+    /*          (vehicle->road_id == 'C' && vehicle->lane == 3 && vehicle->targetRoad == 'B') ||*/
+    /*          (vehicle->road_id == 'B' && vehicle->lane == 3 && vehicle->targetRoad == 'D'))) {*/
+    /*        printf("Vehicle %d is not allowed to move to Lane 1! Stopping movement.\n", vehicle->vehicle_id);*/
+    /*        return;*/
+    /*    }*/
+    /*}*/
+    /**/
+    /*if (vehicle->targetLane == 2) {*/
+    /*    if (!((vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'B') ||*/
+    /*          (vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||*/
+    /*          (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||*/
+    /*          (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||*/
+    /*          (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||*/
+    /*          (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||*/
+    /*          (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||*/
+    /*          (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'B'))) {*/
+    /*        printf("Vehicle %d is not allowed to move to Lane 2! Stopping movement.\n", vehicle->vehicle_id);*/
+    /*        return;*/
+    /*    }*/
+    /*}*/
   /* Vehicles Stopping Logic */
   int shouldStop = 0;  
   int stopX = vehicle->rect.x;  
@@ -431,20 +432,20 @@ int main() {
     if (!renderer) {
         return 1;
     }
-VehicleQueue queue;
+    VehicleQueue queue;
     initQueue(&queue);
 
     // connect_to_server(sock, "127.0.0.1");
 
-Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
+    Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
     v1->vehicle_id = 1;
     v1->road_id = 'C';
     v1->lane = 2;
     v1->speed = 2;
     v1->rect.w = 20;
     v1->rect.h = 20;
-    v1->targetRoad = 'D';
-    v1->targetLane =2;
+    v1->targetRoad = 'A';
+    v1->targetLane = 2;
     getLaneCenter(v1->road_id, v1->lane, &v1->rect.x, &v1->rect.y);
     enqueue(&queue, v1);
 
@@ -455,7 +456,7 @@ Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
     v2->speed = 2;
     v2->rect.w = 20;
     v2->rect.h = 20;
-    v2->targetRoad = 'C';
+    v2->targetRoad = 'B';
     v2->targetLane = 2;
     getLaneCenter(v2->road_id, v2->lane, &v2->rect.x, &v2->rect.y);
     enqueue(&queue, v2);
@@ -467,22 +468,10 @@ Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
     v3->speed = 2;
     v3->rect.w = 20;
     v3->rect.h = 20;
-    v3->targetRoad = 'B';
+    v3->targetRoad = 'D';
     v3->targetLane = 2;
     getLaneCenter(v3->road_id, v3->lane, &v3->rect.x, &v3->rect.y);
     enqueue(&queue, v3);
-
-    Vehicle *v4 = (Vehicle *)malloc(sizeof(Vehicle));
-    v4->vehicle_id = 4;
-    v4->road_id = 'B';
-    v4->lane = 2;
-    v4->speed = 2;
-    v4->rect.w = 20;
-    v4->rect.h = 20;
-    v4->targetRoad = 'A';
-    v4->targetLane = 2;
-    getLaneCenter(v4->road_id, v4->lane, &v4->rect.x, &v4->rect.y);
-    enqueue(&queue, v4);
 
 
     Vehicle *v5 = (Vehicle *)malloc(sizeof(Vehicle));
@@ -496,6 +485,66 @@ Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
     v5->targetLane = 1;
     getLaneCenter(v5->road_id, v5->lane, &v5->rect.x, &v5->rect.y);
     enqueue(&queue, v5);
+
+    Vehicle *v6 = (Vehicle *)malloc(sizeof(Vehicle));
+    v6->vehicle_id = 6;
+    v6->road_id = 'C';
+    v6->lane = 3;
+    v6->speed = 2;
+    v6->rect.w = 20;
+    v6->rect.h = 20;
+    v6->targetRoad = 'B';
+    v6->targetLane = 1;
+    getLaneCenter(v6->road_id, v6->lane, &v6->rect.x, &v6->rect.y);
+    enqueue(&queue, v6);
+
+    Vehicle *v7 = (Vehicle *)malloc(sizeof(Vehicle));
+    v7->vehicle_id = 7;
+    v7->road_id = 'A';
+    v7->lane = 3;
+    v7->speed = 2;
+    v7->rect.w = 20;
+    v7->rect.h = 20;
+    v7->targetRoad = 'C';
+    v7->targetLane = 1;
+    getLaneCenter(v7->road_id, v7->lane, &v7->rect.x, &v7->rect.y);
+    enqueue(&queue, v7);
+
+    Vehicle *v8 = (Vehicle *)malloc(sizeof(Vehicle));
+    v8->vehicle_id = 8;
+    v8->road_id = 'B';
+    v8->lane = 3;
+    v8->speed = 2;
+    v8->rect.w = 20;
+    v8->rect.h = 20;
+    v8->targetRoad = 'D';
+    v8->targetLane = 1;
+    getLaneCenter(v8->road_id, v8->lane, &v8->rect.x, &v8->rect.y);
+    enqueue(&queue, v8);
+
+    Vehicle *v9 = (Vehicle *)malloc(sizeof(Vehicle));
+    v9->vehicle_id = 9;
+    v9->road_id = 'A';
+    v9->lane = 2;
+    v9->speed = 2;
+    v9->rect.w = 20;
+    v9->rect.h = 20;
+    v9->targetRoad = 'B';
+    v9->targetLane = 2;
+    getLaneCenter(v9->road_id, v9->lane, &v9->rect.x, &v9->rect.y);
+    enqueue(&queue, v9);
+
+    Vehicle *v10 = (Vehicle *)malloc(sizeof(Vehicle));
+    v10->vehicle_id = 10;
+    v10->road_id = 'B';
+    v10->lane = 2;
+    v10->speed = 2;
+    v10->rect.w = 20;
+    v10->rect.h = 20;
+    v10->targetRoad = 'A';
+    v10->targetLane = 2;
+    getLaneCenter(v10->road_id, v10->lane, &v10->rect.x, &v10->rect.y);
+    enqueue(&queue, v10);
 
     Vehicle *active_vehicles[MAX_VEHICLES] = {0};
     int num_active_vehicles = 0;
@@ -528,13 +577,6 @@ Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
             }
         }
 
-
-
-        DrawBackground(renderer);
-        
-        TrafficLightState(renderer, northSouthGreen, eastWestGreen);
-
-
         int write_idx = 0;
         for (int i = 0; i < num_active_vehicles; i++) {
             if (active_vehicles[i] != NULL) {
@@ -542,10 +584,14 @@ Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
             }
         }
         num_active_vehicles = write_idx;
-
         DrawBackground(renderer);
+        
         TrafficLightState(renderer, northSouthGreen, eastWestGreen);
 
+
+
+
+printf("Rendering %d active vehicles\n", num_active_vehicles);
         for (int i = 0; i < num_active_vehicles; i++) {
             if (active_vehicles[i]) {
                 drawVehicle(renderer, active_vehicles[i]);
