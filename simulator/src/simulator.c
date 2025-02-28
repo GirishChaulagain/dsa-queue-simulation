@@ -71,7 +71,8 @@ Vehicle* dequeue(VehicleQueue *q) {
 }
 
 void drawVehicle(SDL_Renderer *renderer, Vehicle *vehicle) {
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    // Change: Car color from red (255, 0, 0, 255) to blue (0, 0, 255, 255)
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
     printf("Drawing vehicle %d at (%d, %d) with size (%d, %d)\n", 
            vehicle->vehicle_id, vehicle->rect.x, vehicle->rect.y, vehicle->rect.w, vehicle->rect.h);
     SDL_RenderFillRect(renderer, &vehicle->rect);
@@ -131,33 +132,31 @@ void DrawDashedLine(SDL_Renderer *renderer, int x1, int y1, int x2, int y2, int 
     }
 }
 
-void DrawLaneMarking(SDL_Renderer *renderer){
-    SDL_Color laneMarking = {247, 233, 23, 255};
-    SDL_Color laneMarkingRed = {247, 0, 0, 255};
-    
+void DrawLaneMarking(SDL_Renderer *renderer) {
+    SDL_Color laneMarking = {247, 233, 23, 255}; // Yellow (unchanged for dashed lines)
+    // Change: Use yellow for all lines, including middle dividers (previously red)
+    SDL_Color laneMarkingYellow = {247, 233, 23, 255}; // Was laneMarkingRed
+
     SDL_SetRenderDrawColor(renderer, laneMarking.r, laneMarking.g, laneMarking.b, laneMarking.a);
-    // Horizontal road markings
     DrawDashedLine(renderer, 0, 250, 150, 250, 10);
     DrawDashedLine(renderer, 0, 350, 150, 350, 10);
     DrawDashedLine(renderer, 450, 250, 600, 250, 10);
     DrawDashedLine(renderer, 450, 350, 600, 350, 10);
 
-    SDL_SetRenderDrawColor(renderer, laneMarkingRed.r, laneMarkingRed.g, laneMarkingRed.b, laneMarkingRed.a);
-    // Split middle lane markings - horizontal
-    DrawDashedLine(renderer, 600, 300, 450, 300, 0);  // Middle divider
-    DrawDashedLine(renderer, 0, 300, 150, 300, 0);  // Middle divider
+    // Change: Middle dividers now yellow instead of red
+    SDL_SetRenderDrawColor(renderer, laneMarkingYellow.r, laneMarkingYellow.g, laneMarkingYellow.b, laneMarkingYellow.a);
+    DrawDashedLine(renderer, 600, 300, 450, 300, 0);
+    DrawDashedLine(renderer, 0, 300, 150, 300, 0);
 
     SDL_SetRenderDrawColor(renderer, laneMarking.r, laneMarking.g, laneMarking.b, laneMarking.a);
-    // Vertical road markings
     DrawDashedLine(renderer, 250, 0, 250, 150, 10);
     DrawDashedLine(renderer, 350, 0, 350, 150, 10);
     DrawDashedLine(renderer, 250, 450, 250, 600, 10);
     DrawDashedLine(renderer, 350, 450, 350, 600, 10);
 
-    SDL_SetRenderDrawColor(renderer, laneMarkingRed.r, laneMarkingRed.g, laneMarkingRed.b, laneMarkingRed.a);
-    // Split middle lane markings - vertical
-    DrawDashedLine(renderer, 300, 0, 300, 150, 0);  // Middle divider
-    DrawDashedLine(renderer, 300, 600, 300, 450, 0);    // Middle divider
+    SDL_SetRenderDrawColor(renderer, laneMarkingYellow.r, laneMarkingYellow.g, laneMarkingYellow.b, laneMarkingYellow.a);
+    DrawDashedLine(renderer, 300, 0, 300, 150, 0);
+    DrawDashedLine(renderer, 300, 600, 300, 450, 0);
 }
 
 void DrawTrafficLight(SDL_Renderer *renderer, int XPos, int YPos, int isGreen, char *orientation) {
@@ -195,25 +194,19 @@ void TrafficLightState(SDL_Renderer *renderer, int northSouthGreen, int eastWest
 }
 
 void DrawBackground(SDL_Renderer *renderer) {
-    // Set background color (green for grass)
-    SDL_SetRenderDrawColor(renderer, 34, 139, 34, 255);
+    SDL_SetRenderDrawColor(renderer, 34, 139, 34, 255); // Grass (unchanged)
     SDL_RenderClear(renderer);
 
-    // Set road color (gray)
-    SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+    // Change: Road color from dark grey (50, 50, 50) to lighter grey (150, 150, 150)
+    SDL_SetRenderDrawColor(renderer, 150, 150, 150, 255);
 
-    // Horizontal road
-    SDL_Rect horizontalRoad = {0, 150, 600, 300}; 
+    SDL_Rect horizontalRoad = {0, 150, 600, 300};
     SDL_RenderFillRect(renderer, &horizontalRoad);
-
-    // Vertical road
-    SDL_Rect verticalRoad = {150, 0, 300, 600}; 
+    SDL_Rect verticalRoad = {150, 0, 300, 600};
     SDL_RenderFillRect(renderer, &verticalRoad);
-
-    // Dashed lines for lane markings (yellow)
     DrawLaneMarking(renderer);
-    // Traffic lights
 }
+
 
 
 /*void receive_data(int sock) {*/
