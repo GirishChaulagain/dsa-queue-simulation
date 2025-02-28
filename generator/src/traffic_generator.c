@@ -5,37 +5,31 @@
 #include <arpa/inet.h>
 
 #define PORT 8080
-
 #define ROADS 4
-#define LANES 3
 
-struct sockaddr_in *address;
-
-typedef struct{
+typedef struct {
     int vehicle_id;
     char road_id;
     int lane;
     int speed;
+    int rect_w;
+    int rect_h;
     char targetRoad;
-    int targetLane; 
+    int targetLane;
 } Vehicle;
 
-void send_data(int socket_fd, Vehicle *data)
-{
-    if (send(socket_fd, data, sizeof(*data), 0) < 0)
-    {
+void send_data(int socket_fd, Vehicle *data) {
+    if (send(socket_fd, data, sizeof(*data), 0) < 0) {
         perror("Send failed");
         exit(EXIT_FAILURE);
     }
-    printf("Data sent to client: Vehicle ID: %d on Road %c Lane %cL%d\n",
-           data->vehicle_id, data->road_id, data->road_id, data->lane);
+    printf("Data sent to client: Vehicle ID: %d on Road %c Lane %d -> Target %c Lane %d\n",
+           data->vehicle_id, data->road_id, data->lane, data->targetRoad, data->targetLane);
 }
 
-int create_socket()
-{
+int create_socket() {
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_fd < 0)
-    {
+    if (sock_fd < 0) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
@@ -74,30 +68,26 @@ int accept_connection(int sock_fd, struct sockaddr_in *address) {
     return new_socket;
 }
 
-char getRandomRoad()
-{
+char getRandomRoad() {
     char roads[] = {'A', 'B', 'C', 'D'};
     return roads[rand() % ROADS];
 }
 
-
 Vehicle generate_vehicle() {
     static int vehicle_counter = 0;
     Vehicle v;
-    v.vehicle_id = ++vehicle_counter; 
+    v.vehicle_id = ++vehicle_counter;
     v.road_id = getRandomRoad();
-    v.lane = (rand() % 2) + 2;  // Only lane 2 or 3
+    v.lane = (rand() % 2) + 2;  // Lane 2 or 3
     v.speed = 2;
-    /*v.rect_w = 20;*/
-    /*v.rect_h = 20;*/
+    v.rect_w = 20;
+    v.rect_h = 20;
 
-    // Set targetRoad and targetLane based on lane
     if (v.lane == 2) {
         if (v.road_id == 'A') v.targetRoad = 'B';
         else if (v.road_id == 'B') v.targetRoad = 'A';
         else if (v.road_id == 'C') v.targetRoad = 'D';
         else if (v.road_id == 'D') v.targetRoad = 'C';
-        v.targetLane = 2;
     } else if (v.lane == 3) {
         if (v.road_id == 'A') v.targetRoad = 'C';
         else if (v.road_id == 'B') v.targetRoad = 'D';
@@ -131,10 +121,10 @@ int main() {
     while (1) {
         Vehicle vehicle = generate_vehicle();
         send_data(new_socket, &vehicle);
-        printf("Generated Vehicle ID: %d on Road %c Lane %d, Target: %c Lane %d\n",
-               vehicle.vehicle_id, vehicle.road_id, vehicle.lane, vehicle.targetRoad, vehicle.targetLane);
-        sleep(rand() % 3 + 1); // Sleep for 1 to 3 seconds
+        sleep(rand() % 3 + 1); // Sleep 1-3 seconds
     }
 
+    close(new_socket);
+    close(server_fd);
     return 0;
 }

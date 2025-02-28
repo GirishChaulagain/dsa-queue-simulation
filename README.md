@@ -1,7 +1,7 @@
 # dsa-queue-simulation
 
 
-This project is a traffic simulation implemented in C using the SDL2 library. It simulates a four-way intersection with vehicles moving in different directions, traffic lights, and collision detection. The simulation is visualized using SDL2's rendering capabilities.
+This project is a traffic management system which simulates real like traffic states, implemented in C using the SDL2 library. It simulates a four-way intersection with vehicles moving in different directions, and traffic lights. The simulation is visualized using SDL2 rendering.
 
 ---
 
@@ -33,19 +33,19 @@ This project is a traffic simulation implemented in C using the SDL2 library. It
      - Follow the installation instructions provided.
 
 2. Clone the Repository:
-```
+```bash
     git clone https://github.com/GirishChaulagain/dsa-queue-simulator
    cd dsa-queue-simulator
 ```
 3. Compile the Code:
-```
+```bash
        cd generator
    cmake -S . -B build/
    
 ```
 
 4. Run the Simulation:
-```
+```bash
    cd build && make
    
 ```
@@ -59,7 +59,7 @@ This project is a traffic simulation implemented in C using the SDL2 library. It
 
 ## Usage
 
-The simulation runs in a window and displays vehicles moving through a four-way intersection. Traffic lights control the flow of vehicles, and collision detection ensures vehicles do not overlap.
+The simulatio displays vehicles moving through a four-way intersection. Traffic lights control the flow of vehicles, and collision detection ensures vehicles do not overlap.
 
 ### Controls
 - Close the Window: Click the close button or press ESC to exit the simulation.
@@ -70,6 +70,7 @@ The simulation runs in a window and displays vehicles moving through a four-way 
 ## Project Structure
 
 - `traffic_generator.c`: Program for generating traffic by choosing a random lane.
+- `simulator.c`: Program for rendering and processing vehiles sent by traffic_generator.c
 - `README.md`: This file, providing an overview of the project.
 - `Makefile`: A Makefile to simplify the build process.
 

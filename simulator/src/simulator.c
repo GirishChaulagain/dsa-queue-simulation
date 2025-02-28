@@ -7,14 +7,16 @@
 #include <arpa/inet.h>
 #include <SDL2/SDL.h>
 #include <stdbool.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #define PORT 8080
 #define MAX_VEHICLES 100
 const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 600;
 
-static int northSouthGreen = 0; // initial state
-static int eastWestGreen = 1;
+static int udGreen = 0; // initial state
+static int rlGreen = 1;
 
 typedef struct{
     SDL_Rect rect;
@@ -32,6 +34,9 @@ typedef struct {
     int rear;
     int size;
 } VehicleQueue;
+
+
+    VehicleQueue queue;
 
 void initQueue(VehicleQueue *q) {
     q->front = 0;
@@ -70,6 +75,32 @@ Vehicle* dequeue(VehicleQueue *q) {
     return v;
 }
 
+int create_socket() {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+    // Set socket to non-blocking
+    int flags = fcntl(sock, F_GETFL, 0);
+    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+    return sock;
+}
+
+void connect_to_server(int sock) {
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        if (errno != EINPROGRESS) {
+            perror("Connection failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
 void drawVehicle(SDL_Renderer *renderer, Vehicle *vehicle) {
     // Change: Car color from red (255, 0, 0, 255) to blue (0, 0, 255, 255)
     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
@@ -106,7 +137,7 @@ void DrawDashedLine(SDL_Renderer *renderer, int x1, int y1, int x2, int y2, int 
     int dx = x2 - x1;
     int dy = y2 - y1;
     int steps = (abs(dx) > abs(dy)) ? abs(dx) : abs(dy);
-    
+
     float xIncrement = (float)dx / steps;
     float yIncrement = (float)dy / steps;
 
@@ -160,7 +191,7 @@ void DrawLaneMarking(SDL_Renderer *renderer) {
 }
 
 void DrawTrafficLight(SDL_Renderer *renderer, int XPos, int YPos, int isGreen, char *orientation) {
-    
+
     const int width = 30;
     const int height = 90;
 
@@ -171,7 +202,7 @@ void DrawTrafficLight(SDL_Renderer *renderer, int XPos, int YPos, int isGreen, c
     }
 
     SDL_Rect trafficLightRect;
-    
+
     if (strcmp(orientation, "vertical") == 0) {
         trafficLightRect = (SDL_Rect){XPos, YPos, width, height}; // Horizontal orientation
     } else if (strcmp(orientation, "horizontal") == 0) {
@@ -180,17 +211,17 @@ void DrawTrafficLight(SDL_Renderer *renderer, int XPos, int YPos, int isGreen, c
         printf("Invalid orientation: %s\n", orientation);
         return;
     }
-    
+
     SDL_RenderFillRect(renderer, &trafficLightRect);
 }
 
-void TrafficLightState(SDL_Renderer *renderer, int northSouthGreen, int eastWestGreen) {
+void TrafficLightState(SDL_Renderer *renderer, int udGreen, int rlGreen) {
     // Vertical lights control North-South traffic
-    DrawTrafficLight(renderer, 175, 255, northSouthGreen, "vertical"); // North-South left lane
-    DrawTrafficLight(renderer, 395, 255, northSouthGreen, "vertical"); // North-South right lane
+    DrawTrafficLight(renderer, 175, 255, udGreen, "vertical"); // North-South left lane
+    DrawTrafficLight(renderer, 395, 255, udGreen, "vertical"); // North-South right lane
     // Horizontal lights control East-West traffic
-    DrawTrafficLight(renderer, 255, 175, eastWestGreen, "horizontal"); // East-West upper lane
-    DrawTrafficLight(renderer, 255, 395, eastWestGreen, "horizontal"); // East-West lower lane
+    DrawTrafficLight(renderer, 255, 175, rlGreen, "horizontal"); // East-West upper lane
+    DrawTrafficLight(renderer, 255, 395, rlGreen, "horizontal"); // East-West lower lane
 }
 
 void DrawBackground(SDL_Renderer *renderer) {
@@ -242,15 +273,15 @@ LanePosition lanePositions[4][3] = {
     // A road lanes (North to South) (A1, A2, A3)
     // A2 is split into two - leftmost (outgoing), rightmost (incoming)
     { {150, 250, -30, -30}, {270, 300, -30, -30}, {350, 450, -30, -30} },
-    
+
     // B road lanes (South to North) (B1, B2, B3)
     // B2 is split into two - leftmost (incoming), rightmost (outgoing)
     { {350, 450, 630, 630}, {300, 330, 630, 630}, {150, 250, 630, 630} },
-    
+
     // C road lanes (East to West) (C1, C2, C3)
     // C2 is split into two - uppermost (outgoing), lowermost (incoming)
     { {630, 630, 150, 250}, {630, 630, 270, 300}, {630, 630, 350, 450} },
-    
+
     // D road lanes (West to East) (D1, D2, D3)
     // D2 is split into two - uppermost (incoming), lowermost (outgoing)
     { {-30, -30, 350, 450}, {-30, -30, 300, 330}, {-30, -30, 150, 250} }
@@ -288,30 +319,30 @@ void moveVehicle(Vehicle *vehicle) {
     int targetX, targetY;
     getLaneCenter(vehicle->targetRoad, vehicle->targetLane, &targetX, &targetY);
 
-    /*if (vehicle->targetLane == 1) {*/
-    /*    if (!((vehicle->road_id == 'D' && vehicle->lane == 3 && vehicle->targetRoad == 'A') ||*/
-    /*          (vehicle->road_id == 'A' && vehicle->lane == 3 && vehicle->targetRoad == 'C') ||*/
-    /*          (vehicle->road_id == 'C' && vehicle->lane == 3 && vehicle->targetRoad == 'B') ||*/
-    /*          (vehicle->road_id == 'B' && vehicle->lane == 3 && vehicle->targetRoad == 'D'))) {*/
-    /*        printf("Vehicle %d is not allowed to move to Lane 1! Stopping movement.\n", vehicle->vehicle_id);*/
-    /*        return;*/
-    /*    }*/
-    /*}*/
-    /**/
-    /*if (vehicle->targetLane == 2) {*/
-    /*    if (!((vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'B') ||*/
-    /*          (vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||*/
-    /*          (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||*/
-    /*          (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||*/
-    /*          (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||*/
-    /*          (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||*/
-    /*          (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||*/
-    /*          (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'B'))) {*/
-    /*        printf("Vehicle %d is not allowed to move to Lane 2! Stopping movement.\n", vehicle->vehicle_id);*/
-    /*        return;*/
-    /*    }*/
-    /*}*/
-  /* Vehicles Stopping Logic */
+    if (vehicle->targetLane == 1) {
+        if (!((vehicle->road_id == 'D' && vehicle->lane == 3 && vehicle->targetRoad == 'A') ||
+              (vehicle->road_id == 'A' && vehicle->lane == 3 && vehicle->targetRoad == 'C') ||
+              (vehicle->road_id == 'C' && vehicle->lane == 3 && vehicle->targetRoad == 'B') ||
+              (vehicle->road_id == 'B' && vehicle->lane == 3 && vehicle->targetRoad == 'D'))) {
+            printf("Vehicle %d is not allowed to move to Lane 1! Stopping movement.\n", vehicle->vehicle_id);
+            return;
+        }
+    }
+
+    if (vehicle->targetLane == 2) {
+        if (!((vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'B') ||
+              (vehicle->road_id == 'A' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||
+              (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||
+              (vehicle->road_id == 'C' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||
+              (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'A') ||
+              (vehicle->road_id == 'B' && vehicle->lane == 2 && vehicle->targetRoad == 'D') ||
+              (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'C') ||
+              (vehicle->road_id == 'D' && vehicle->lane == 2 && vehicle->targetRoad == 'B'))) {
+            printf("Vehicle %d is not allowed to move to Lane 2! Stopping movement.\n", vehicle->vehicle_id);
+            return;
+        }
+    }
+   /*Vehicle Stopping Logic */
   int shouldStop = 0;  
   int stopX = vehicle->rect.x;  
   int stopY = vehicle->rect.y;  
@@ -320,7 +351,7 @@ void moveVehicle(Vehicle *vehicle) {
 
   //For lane 2 only 
   if (vehicle->lane == 2) {
-    if (vehicle->road_id == 'A' && northSouthGreen) {
+    if (vehicle->road_id == 'A' && udGreen) {
       stopY = 150 - 20;
       if (vehicle->rect.y == stopY) {
         shouldStop = 1;
@@ -329,7 +360,7 @@ void moveVehicle(Vehicle *vehicle) {
       }
     }
 
-    if (vehicle->road_id == 'B' && northSouthGreen) {
+    if (vehicle->road_id == 'B' && udGreen) {
       stopY = 450;
       if (vehicle->rect.y == stopY) {
         shouldStop = 1;
@@ -338,7 +369,7 @@ void moveVehicle(Vehicle *vehicle) {
       }
     }
 
-    if (vehicle->road_id == 'D' && eastWestGreen) {
+    if (vehicle->road_id == 'D' && rlGreen) {
       stopX = 150 - 20;
       if (vehicle->rect.x == stopX) {
         shouldStop = 1;
@@ -347,7 +378,7 @@ void moveVehicle(Vehicle *vehicle) {
       }
     }
 
-    if (vehicle->road_id == 'C' && eastWestGreen) {
+    if (vehicle->road_id == 'C' && rlGreen) {
       stopX = 450;
       if (vehicle->rect.x == stopX) {
         shouldStop = 1;
@@ -403,16 +434,38 @@ Uint32 lastSwitchTime = 0;
 void updateTrafficLights() {
     Uint32 currentTime = SDL_GetTicks();
     if (currentTime - lastSwitchTime > 8555) {
-        northSouthGreen = !northSouthGreen;
-        eastWestGreen = !eastWestGreen;
+        udGreen = !udGreen;
+        rlGreen = !rlGreen;
         lastSwitchTime = currentTime;
-        printf("Traffic Light Changed! North-South: %d, East-West: %d\n", northSouthGreen, eastWestGreen);
+        printf("Traffic Light Changed! North-South: %d, East-West: %d\n", udGreen, rlGreen);
     }
 }
 
+void receive_data(int sock) {
+    Vehicle received_data;
+    ssize_t bytes_received = recv(sock, &received_data, sizeof(received_data), MSG_DONTWAIT);
+    if (bytes_received > 0) {
+        Vehicle *v = (Vehicle *)malloc(sizeof(Vehicle));
+        v->vehicle_id = received_data.vehicle_id;
+        v->road_id = received_data.road_id;
+        v->lane = received_data.lane;
+        v->speed = received_data.speed;
+        v->rect.w = 20;  // Hardcoded as in original
+        v->rect.h = 20;  // Hardcoded as in original
+        v->targetRoad = received_data.targetRoad;
+        v->targetLane = received_data.targetLane;
+        getLaneCenter(v->road_id, v->lane, &v->rect.x, &v->rect.y);
+    } else if (bytes_received == 0) {
+        printf("Server disconnected\n");
+    } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        perror("Receive failed");
+    }
+}
+
+
 int main() {
     // Socket related code commented out during the development of UI elements
-    // int sock = create_socket();
+     int sock = create_socket();
 
     if (InitializeSDL() < 0) {
         return 1;
@@ -428,116 +481,116 @@ int main() {
     VehicleQueue queue;
     initQueue(&queue);
 
-    // connect_to_server(sock, "127.0.0.1");
+     connect_to_server(sock);
 
-    Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));
-    v1->vehicle_id = 1;
-    v1->road_id = 'C';
-    v1->lane = 2;
-    v1->speed = 2;
-    v1->rect.w = 20;
-    v1->rect.h = 20;
-    v1->targetRoad = 'A';
-    v1->targetLane = 2;
-    getLaneCenter(v1->road_id, v1->lane, &v1->rect.x, &v1->rect.y);
-    enqueue(&queue, v1);
-
-    Vehicle *v2 = (Vehicle *)malloc(sizeof(Vehicle));
-    v2->vehicle_id = 2;
-    v2->road_id = 'D';
-    v2->lane = 2;
-    v2->speed = 2;
-    v2->rect.w = 20;
-    v2->rect.h = 20;
-    v2->targetRoad = 'B';
-    v2->targetLane = 2;
-    getLaneCenter(v2->road_id, v2->lane, &v2->rect.x, &v2->rect.y);
-    enqueue(&queue, v2);
-
-    Vehicle *v3 = (Vehicle *)malloc(sizeof(Vehicle));
-    v3->vehicle_id = 3;
-    v3->road_id = 'A';
-    v3->lane = 2;
-    v3->speed = 2;
-    v3->rect.w = 20;
-    v3->rect.h = 20;
-    v3->targetRoad = 'D';
-    v3->targetLane = 2;
-    getLaneCenter(v3->road_id, v3->lane, &v3->rect.x, &v3->rect.y);
-    enqueue(&queue, v3);
-
-
-    Vehicle *v5 = (Vehicle *)malloc(sizeof(Vehicle));
-    v5->vehicle_id = 5;
-    v5->road_id = 'D';
-    v5->lane = 3;
-    v5->speed = 2;
-    v5->rect.w = 20;
-    v5->rect.h = 20;
-    v5->targetRoad = 'A';
-    v5->targetLane = 1;
-    getLaneCenter(v5->road_id, v5->lane, &v5->rect.x, &v5->rect.y);
-    enqueue(&queue, v5);
-
-    Vehicle *v6 = (Vehicle *)malloc(sizeof(Vehicle));
-    v6->vehicle_id = 6;
-    v6->road_id = 'C';
-    v6->lane = 3;
-    v6->speed = 2;
-    v6->rect.w = 20;
-    v6->rect.h = 20;
-    v6->targetRoad = 'B';
-    v6->targetLane = 1;
-    getLaneCenter(v6->road_id, v6->lane, &v6->rect.x, &v6->rect.y);
-    enqueue(&queue, v6);
-
-    Vehicle *v7 = (Vehicle *)malloc(sizeof(Vehicle));
-    v7->vehicle_id = 7;
-    v7->road_id = 'A';
-    v7->lane = 3;
-    v7->speed = 2;
-    v7->rect.w = 20;
-    v7->rect.h = 20;
-    v7->targetRoad = 'C';
-    v7->targetLane = 1;
-    getLaneCenter(v7->road_id, v7->lane, &v7->rect.x, &v7->rect.y);
-    enqueue(&queue, v7);
-
-    Vehicle *v8 = (Vehicle *)malloc(sizeof(Vehicle));
-    v8->vehicle_id = 8;
-    v8->road_id = 'B';
-    v8->lane = 3;
-    v8->speed = 2;
-    v8->rect.w = 20;
-    v8->rect.h = 20;
-    v8->targetRoad = 'D';
-    v8->targetLane = 1;
-    getLaneCenter(v8->road_id, v8->lane, &v8->rect.x, &v8->rect.y);
-    enqueue(&queue, v8);
-
-    Vehicle *v9 = (Vehicle *)malloc(sizeof(Vehicle));
-    v9->vehicle_id = 9;
-    v9->road_id = 'A';
-    v9->lane = 2;
-    v9->speed = 2;
-    v9->rect.w = 20;
-    v9->rect.h = 20;
-    v9->targetRoad = 'B';
-    v9->targetLane = 2;
-    getLaneCenter(v9->road_id, v9->lane, &v9->rect.x, &v9->rect.y);
-    enqueue(&queue, v9);
-
-    Vehicle *v10 = (Vehicle *)malloc(sizeof(Vehicle));
-    v10->vehicle_id = 10;
-    v10->road_id = 'B';
-    v10->lane = 2;
-    v10->speed = 2;
-    v10->rect.w = 20;
-    v10->rect.h = 20;
-    v10->targetRoad = 'A';
-    v10->targetLane = 2;
-    getLaneCenter(v10->road_id, v10->lane, &v10->rect.x, &v10->rect.y);
-    enqueue(&queue, v10);
+    /*Vehicle *v1 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v1->vehicle_id = 1;*/
+    /*v1->road_id = 'C';*/
+    /*v1->lane = 2;*/
+    /*v1->speed = 2;*/
+    /*v1->rect.w = 20;*/
+    /*v1->rect.h = 20;*/
+    /*v1->targetRoad = 'A';*/
+    /*v1->targetLane = 2;*/
+    /*getLaneCenter(v1->road_id, v1->lane, &v1->rect.x, &v1->rect.y);*/
+    /*enqueue(&queue, v1);*/
+    /**/
+    /*Vehicle *v2 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v2->vehicle_id = 2;*/
+    /*v2->road_id = 'D';*/
+    /*v2->lane = 2;*/
+    /*v2->speed = 2;*/
+    /*v2->rect.w = 20;*/
+    /*v2->rect.h = 20;*/
+    /*v2->targetRoad = 'B';*/
+    /*v2->targetLane = 2;*/
+    /*getLaneCenter(v2->road_id, v2->lane, &v2->rect.x, &v2->rect.y);*/
+    /*enqueue(&queue, v2);*/
+    /**/
+    /*Vehicle *v3 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v3->vehicle_id = 3;*/
+    /*v3->road_id = 'A';*/
+    /*v3->lane = 2;*/
+    /*v3->speed = 2;*/
+    /*v3->rect.w = 20;*/
+    /*v3->rect.h = 20;*/
+    /*v3->targetRoad = 'D';*/
+    /*v3->targetLane = 2;*/
+    /*getLaneCenter(v3->road_id, v3->lane, &v3->rect.x, &v3->rect.y);*/
+    /*enqueue(&queue, v3);*/
+    /**/
+    /**/
+    /*Vehicle *v5 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v5->vehicle_id = 5;*/
+    /*v5->road_id = 'D';*/
+    /*v5->lane = 3;*/
+    /*v5->speed = 2;*/
+    /*v5->rect.w = 20;*/
+    /*v5->rect.h = 20;*/
+    /*v5->targetRoad = 'A';*/
+    /*v5->targetLane = 1;*/
+    /*getLaneCenter(v5->road_id, v5->lane, &v5->rect.x, &v5->rect.y);*/
+    /*enqueue(&queue, v5);*/
+    /**/
+    /*Vehicle *v6 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v6->vehicle_id = 6;*/
+    /*v6->road_id = 'C';*/
+    /*v6->lane = 3;*/
+    /*v6->speed = 2;*/
+    /*v6->rect.w = 20;*/
+    /*v6->rect.h = 20;*/
+    /*v6->targetRoad = 'B';*/
+    /*v6->targetLane = 1;*/
+    /*getLaneCenter(v6->road_id, v6->lane, &v6->rect.x, &v6->rect.y);*/
+    /*enqueue(&queue, v6);*/
+    /**/
+    /*Vehicle *v7 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v7->vehicle_id = 7;*/
+    /*v7->road_id = 'A';*/
+    /*v7->lane = 3;*/
+    /*v7->speed = 2;*/
+    /*v7->rect.w = 20;*/
+    /*v7->rect.h = 20;*/
+    /*v7->targetRoad = 'C';*/
+    /*v7->targetLane = 1;*/
+    /*getLaneCenter(v7->road_id, v7->lane, &v7->rect.x, &v7->rect.y);*/
+    /*enqueue(&queue, v7);*/
+    /**/
+    /*Vehicle *v8 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v8->vehicle_id = 8;*/
+    /*v8->road_id = 'B';*/
+    /*v8->lane = 3;*/
+    /*v8->speed = 2;*/
+    /*v8->rect.w = 20;*/
+    /*v8->rect.h = 20;*/
+    /*v8->targetRoad = 'D';*/
+    /*v8->targetLane = 1;*/
+    /*getLaneCenter(v8->road_id, v8->lane, &v8->rect.x, &v8->rect.y);*/
+    /*enqueue(&queue, v8);*/
+    /**/
+    /*Vehicle *v9 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v9->vehicle_id = 9;*/
+    /*v9->road_id = 'A';*/
+    /*v9->lane = 2;*/
+    /*v9->speed = 2;*/
+    /*v9->rect.w = 20;*/
+    /*v9->rect.h = 20;*/
+    /*v9->targetRoad = 'B';*/
+    /*v9->targetLane = 2;*/
+    /*getLaneCenter(v9->road_id, v9->lane, &v9->rect.x, &v9->rect.y);*/
+    /*enqueue(&queue, v9);*/
+    /**/
+    /*Vehicle *v10 = (Vehicle *)malloc(sizeof(Vehicle));*/
+    /*v10->vehicle_id = 10;*/
+    /*v10->road_id = 'B';*/
+    /*v10->lane = 2;*/
+    /*v10->speed = 2;*/
+    /*v10->rect.w = 20;*/
+    /*v10->rect.h = 20;*/
+    /*v10->targetRoad = 'A';*/
+    /*v10->targetLane = 2;*/
+    /*getLaneCenter(v10->road_id, v10->lane, &v10->rect.x, &v10->rect.y);*/
+    /*enqueue(&queue, v10);*/
 
     Vehicle *active_vehicles[MAX_VEHICLES] = {0};
     int num_active_vehicles = 0;
@@ -550,6 +603,8 @@ int main() {
             }
         }
 
+        receive_data(sock);
+
         while (!isQueueEmpty(&queue) && num_active_vehicles < MAX_VEHICLES) {
             Vehicle *v = dequeue(&queue);
             active_vehicles[num_active_vehicles++] = v;
@@ -557,19 +612,19 @@ int main() {
 
         updateTrafficLights();
 
-    for (int i = 0; i < num_active_vehicles; i++) {
+for (int i = 0; i < num_active_vehicles; i++) {
             if (active_vehicles[i]) {
                 moveVehicle(active_vehicles[i]);
                 int targetX, targetY;
                 getLaneCenter(active_vehicles[i]->targetRoad, active_vehicles[i]->targetLane, &targetX, &targetY);
-                if (active_vehicles[i]->rect.x == targetX && active_vehicles[i]->rect.y == targetY) {
+                if (abs(active_vehicles[i]->rect.x - targetX) <= active_vehicles[i]->speed && 
+                    abs(active_vehicles[i]->rect.y - targetY) <= active_vehicles[i]->speed) {
                     printf("Vehicle %d reached target and is removed.\n", active_vehicles[i]->vehicle_id);
                     free(active_vehicles[i]);
                     active_vehicles[i] = NULL;
                 }
             }
         }
-
         int write_idx = 0;
         for (int i = 0; i < num_active_vehicles; i++) {
             if (active_vehicles[i] != NULL) {
@@ -578,13 +633,13 @@ int main() {
         }
         num_active_vehicles = write_idx;
         DrawBackground(renderer);
-        
-        TrafficLightState(renderer, northSouthGreen, eastWestGreen);
+
+        TrafficLightState(renderer, udGreen, rlGreen);
 
 
 
 
-printf("Rendering %d active vehicles\n", num_active_vehicles);
+        printf("Rendering %d active vehicles\n", num_active_vehicles);
         for (int i = 0; i < num_active_vehicles; i++) {
             if (active_vehicles[i]) {
                 drawVehicle(renderer, active_vehicles[i]);
@@ -602,11 +657,11 @@ printf("Rendering %d active vehicles\n", num_active_vehicles);
     // receive_data(sock);
 
     // Close socket
-    // close(sock);
+     close(sock);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    
+
     return 0;
 }
