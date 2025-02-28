@@ -101,11 +101,7 @@ The simulation runs in a window and displays vehicles moving through a four-way 
 
 ---
 
-## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
 
 ## Acknowledgments
 
