@@ -9,11 +9,15 @@
 #define ROADS 4
 #define LANES 3
 
-typedef struct
-{
+struct sockaddr_in *address;
+
+typedef struct{
     int vehicle_id;
     char road_id;
     int lane;
+    int speed;
+    char targetRoad;
+    int targetLane; 
 } Vehicle;
 
 void send_data(int socket_fd, Vehicle *data)
@@ -76,20 +80,36 @@ char getRandomRoad()
     return roads[rand() % ROADS];
 }
 
-Vehicle generate_vehicle()
-{
-    Vehicle v;
 
-    v.vehicle_id = rand() % 100;
+Vehicle generate_vehicle() {
+    static int vehicle_counter = 0;
+    Vehicle v;
+    v.vehicle_id = ++vehicle_counter; 
     v.road_id = getRandomRoad();
-    v.lane = rand() % LANES + 1;
+    v.lane = (rand() % 2) + 2;  // Only lane 2 or 3
+    v.speed = 2;
+    /*v.rect_w = 20;*/
+    /*v.rect_h = 20;*/
+
+    // Set targetRoad and targetLane based on lane
+    if (v.lane == 2) {
+        if (v.road_id == 'A') v.targetRoad = 'B';
+        else if (v.road_id == 'B') v.targetRoad = 'A';
+        else if (v.road_id == 'C') v.targetRoad = 'D';
+        else if (v.road_id == 'D') v.targetRoad = 'C';
+        v.targetLane = 2;
+    } else if (v.lane == 3) {
+        if (v.road_id == 'A') v.targetRoad = 'C';
+        else if (v.road_id == 'B') v.targetRoad = 'D';
+        else if (v.road_id == 'C') v.targetRoad = 'B';
+        else if (v.road_id == 'D') v.targetRoad = 'A';
+        v.targetLane = 1;
+    }
 
     return v;
 }
 
-int main()
-{
-
+int main() {
     int server_fd;
     struct sockaddr_in address;
     srand(time(NULL));
@@ -106,17 +126,14 @@ int main()
     listen_for_connections(server_fd);
 
     int new_socket = accept_connection(server_fd, &address);
+    printf("Client connected! Waiting to send vehicle data...\n");
 
-    while (1)
-    {
+    while (1) {
         Vehicle vehicle = generate_vehicle();
-
         send_data(new_socket, &vehicle);
-
-        printf("Generated Vehicle ID: %d on Road %c Lane %cL%d\n",
-               vehicle.vehicle_id, vehicle.road_id, vehicle.road_id, vehicle.lane);
-
-        sleep(rand() % 3 + 1.5); // Sleep for 1.5 to 3 seconds
+        printf("Generated Vehicle ID: %d on Road %c Lane %d, Target: %c Lane %d\n",
+               vehicle.vehicle_id, vehicle.road_id, vehicle.lane, vehicle.targetRoad, vehicle.targetLane);
+        sleep(rand() % 3 + 1); // Sleep for 1 to 3 seconds
     }
 
     return 0;
