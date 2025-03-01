@@ -1,4 +1,4 @@
-# dsa-queue-simulation
+# dsa-queue-simulator
 
 
 This project is a traffic management system which simulates real like traffic states, implemented in C using the SDL2 library. It simulates a four-way intersection with vehicles moving in different directions, and traffic lights. The simulation is visualized using SDL2 rendering.
@@ -46,7 +46,9 @@ This project is a traffic management system which simulates real like traffic st
 
 4. Run the Simulation:
 ```bash
-   cd build && make
+cd build && make
+./bin/Simulator
+./bin/generator
    
 ```
 
@@ -102,6 +104,9 @@ The simulatio displays vehicles moving through a four-way intersection. Traffic 
 
 ---
 
+## Demo:
+
+![trafficSimulation ](demo/trafficSimulation.gif)
 
 
 ## Acknowledgments
